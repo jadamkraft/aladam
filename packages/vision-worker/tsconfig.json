@@ -2,7 +2,16 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "dist"
+    "outDir": "dist",
+    "baseUrl": ".",
+    "paths": {
+      "@asymmetric-legal/types": ["../../shared/types/dist"],
+      "@asymmetric-legal/utils": ["../../shared/utils/dist"]
+    }
   },
-  "include": ["src"]
+  "include": ["src"],
+  "references": [
+    { "path": "../../shared/types" },
+    { "path": "../../shared/utils" }
+  ]
 }

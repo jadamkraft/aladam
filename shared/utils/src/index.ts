@@ -155,7 +155,7 @@ export async function withExponentialBackoff<T>(
   logger?: Logger
 ): Promise<T> {
   return executeWithBackoffCore(operation, settings, {
-    logger,
+    ...(logger !== undefined && { logger }),
     useJitter: true
   });
 }
