@@ -1,54 +1,109 @@
-import type { AsyncBackoffSettings } from "@shared/types/src/index.js";
+import type {
+  AsyncBackoffSettings,
+  BatesID,
+  CaseID
+} from "@shared/types/src/index.js";
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
-export interface Logger {
+export type LogContext = {
+  readonly batesId?: BatesID;
+  readonly caseId?: CaseID;
+} & Readonly<Record<string, unknown>>;
+
+export interface LogRecord extends LogContext {
+  readonly timestamp: string;
   readonly level: LogLevel;
-  debug(message: string, context?: Record<string, unknown>): void;
-  info(message: string, context?: Record<string, unknown>): void;
-  warn(message: string, context?: Record<string, unknown>): void;
-  error(message: string, context?: Record<string, unknown>): void;
+  readonly message: string;
 }
 
-export function createConsoleLogger(level: LogLevel = "info"): Logger {
-  const levelOrder: LogLevel[] = ["debug", "info", "warn", "error"];
-  const minIndex = levelOrder.indexOf(level);
+export interface Logger {
+  readonly level: LogLevel;
+  debug(message: string, context?: LogContext): void;
+  info(message: string, context?: LogContext): void;
+  warn(message: string, context?: LogContext): void;
+  error(message: string, context?: LogContext): void;
+}
 
-  const shouldLog = (messageLevel: LogLevel): boolean =>
-    levelOrder.indexOf(messageLevel) >= minIndex;
+export interface StructuredLogger extends Logger {
+  withContext(context: LogContext): StructuredLogger;
+}
 
-  const log =
+const levelOrder: LogLevel[] = ["debug", "info", "warn", "error"];
+
+const shouldLog = (currentLevel: LogLevel, messageLevel: LogLevel): boolean =>
+  levelOrder.indexOf(messageLevel) >= levelOrder.indexOf(currentLevel);
+
+export function createStructuredLogger(
+  sink: (record: LogRecord) => void,
+  level: LogLevel = "info",
+  baseContext?: LogContext
+): StructuredLogger {
+  const logAtLevel =
     (messageLevel: LogLevel) =>
-    (message: string, context?: Record<string, unknown>): void => {
-      if (!shouldLog(messageLevel)) {
+    (message: string, context?: LogContext): void => {
+      if (!shouldLog(level, messageLevel)) {
         return;
       }
 
-      const payload = context ?? {};
-      const structured = {
+      const record: LogRecord = {
         timestamp: new Date().toISOString(),
         level: messageLevel,
         message,
-        ...payload
+        ...(baseContext ?? {}),
+        ...(context ?? {})
       };
 
-      // eslint-disable-next-line no-console
-      console.log(JSON.stringify(structured));
+      sink(record);
     };
+
+  const withContext = (context: LogContext): StructuredLogger =>
+    createStructuredLogger(sink, level, {
+      ...(baseContext ?? {}),
+      ...context
+    });
 
   return {
     level,
-    debug: log("debug"),
-    info: log("info"),
-    warn: log("warn"),
-    error: log("error")
+    debug: logAtLevel("debug"),
+    info: logAtLevel("info"),
+    warn: logAtLevel("warn"),
+    error: logAtLevel("error"),
+    withContext
   };
 }
 
-export async function withExponentialBackoff<T>(
+export function createConsoleLogger(level: LogLevel = "info"): StructuredLogger {
+  return createStructuredLogger((record: LogRecord) => {
+    // eslint-disable-next-line no-console
+    console.log(JSON.stringify(record));
+  }, level);
+}
+
+interface BackoffCoreOptions {
+  readonly logger?: Logger;
+  readonly useJitter: boolean;
+}
+
+const wait = (delayMs: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, delayMs);
+  });
+
+const computeNextDelayMs = (
+  currentDelayMs: number,
+  settings: AsyncBackoffSettings,
+  useJitter: boolean
+): number => {
+  const base = useJitter ? Math.random() * currentDelayMs : currentDelayMs;
+  const next = base * settings.factor;
+  return next > settings.maxDelayMs ? settings.maxDelayMs : next;
+};
+
+async function executeWithBackoffCore<T>(
   operation: (attempt: number) => Promise<T>,
   settings: AsyncBackoffSettings,
-  logger?: Logger
+  options: BackoffCoreOptions
 ): Promise<T> {
   let attempt = 0;
   let delay = settings.initialDelayMs;
@@ -59,19 +114,48 @@ export async function withExponentialBackoff<T>(
       return await operation(attempt);
     } catch (error) {
       attempt += 1;
+
       if (attempt > settings.maxRetries) {
-        logger?.error("Operation failed after max retries", { attempt, error });
+        options.logger?.error("Operation failed after max retries", {
+          attempt,
+          error
+        });
         throw error;
       }
 
-      logger?.warn("Operation failed, backing off", { attempt, delay, error });
-
-      await new Promise<void>((resolve) => {
-        setTimeout(resolve, delay);
+      options.logger?.warn("Operation failed, backing off", {
+        attempt,
+        delay,
+        error
       });
 
-      const nextDelay = delay * settings.factor;
-      delay = nextDelay > settings.maxDelayMs ? settings.maxDelayMs : nextDelay;
+      const delayToUse = computeNextDelayMs(delay, settings, options.useJitter);
+      await wait(delayToUse);
+      delay = delayToUse;
     }
   }
+}
+
+export async function withBackoff<T>(
+  fn: () => Promise<T>,
+  settings: AsyncBackoffSettings
+): Promise<T> {
+  return executeWithBackoffCore(
+    () => fn(),
+    settings,
+    {
+      useJitter: true
+    }
+  );
+}
+
+export async function withExponentialBackoff<T>(
+  operation: (attempt: number) => Promise<T>,
+  settings: AsyncBackoffSettings,
+  logger?: Logger
+): Promise<T> {
+  return executeWithBackoffCore(operation, settings, {
+    logger,
+    useJitter: true
+  });
 }
