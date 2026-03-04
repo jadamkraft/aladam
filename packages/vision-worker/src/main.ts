@@ -1,0 +1,36 @@
+import { createConsoleLogger, withExponentialBackoff } from "@shared/utils/src/index.js";
+import type { AsyncBackoffSettings } from "@shared/types/src/index.js";
+
+const logger = createConsoleLogger(process.env.LOG_LEVEL === "debug" ? "debug" : "info");
+
+const backoffSettings: AsyncBackoffSettings = {
+  initialDelayMs: 250,
+  maxDelayMs: 30_000,
+  factor: 2,
+  maxRetries: 5
+};
+
+async function pollAndProcess(): Promise<void> {
+  await withExponentialBackoff(
+    async () => {
+      logger.debug("Vision worker poll tick");
+      // Placeholder: fetch work item, call Azure Vision, persist to Supabase with audit metadata.
+      return undefined;
+    },
+    backoffSettings,
+    logger
+  );
+}
+
+async function main(): Promise<void> {
+  logger.info("Starting vision worker");
+
+  // Placeholder infinite loop with resilience; in production this would be event or queue-driven.
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    // eslint-disable-next-line no-await-in-loop
+    await pollAndProcess();
+  }
+}
+
+void main();

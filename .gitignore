@@ -1,0 +1,22 @@
+node_modules
+dist
+.turbo
+.idea
+.vscode
+*.log
+
+# Env and secrets
+.env
+.env.*
+*.env
+*.env.local
+
+# pnpm
+pnpm-lock.yaml
+
+# Helm / K8s secrets
+infra/helm/**/secrets*.yaml
+infra/helm/**/values-secrets*.yaml
+
+# Test coverage
+coverage

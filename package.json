@@ -1,0 +1,29 @@
+{
+  "name": "asymmetric-legal-intelligence",
+  "version": "0.1.0",
+  "private": true,
+  "description": "K8s-native monorepo for the Asymmetric Legal Intelligence System (Nursing Home Negligence).",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "workspaces": [
+    "packages/*",
+    "shared/*"
+  ],
+  "scripts": {
+    "build": "pnpm -r --filter ./packages... --filter ./shared... run build",
+    "test": "pnpm -r run test",
+    "lint": "pnpm -r run lint",
+    "format": "pnpm -r run format",
+    "typecheck": "pnpm -r run typecheck"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.0.0",
+    "eslint": "^9.0.0",
+    "typescript-eslint": "^8.0.0",
+    "prettier": "^3.3.0"
+  }
+}
