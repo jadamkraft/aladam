@@ -19,6 +19,6 @@
     "format": "prettier --check \"src/**/*.ts\""
   },
   "dependencies": {
-    "@asymmetric-legal/types": "0.1.0"
+    "@asymmetric-legal/types": "workspace:*"
   }
 }

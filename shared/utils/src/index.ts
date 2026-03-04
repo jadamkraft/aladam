@@ -2,7 +2,7 @@ import type {
   AsyncBackoffSettings,
   BatesID,
   CaseID
-} from "@shared/types/src/index.js";
+} from "@asymmetric-legal/types";
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
 

@@ -1,5 +1,5 @@
-import { createConsoleLogger, withExponentialBackoff } from "@shared/utils/src/index.js";
-import type { AsyncBackoffSettings } from "@shared/types/src/index.js";
+import { createConsoleLogger, withExponentialBackoff } from "@asymmetric-legal/utils";
+import type { AsyncBackoffSettings } from "@asymmetric-legal/types";
 
 const logger = createConsoleLogger(process.env.LOG_LEVEL === "debug" ? "debug" : "info");
 

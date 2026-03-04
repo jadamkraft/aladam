@@ -21,8 +21,8 @@
     "types": ["node"],
     "baseUrl": ".",
     "paths": {
-      "@shared/types": ["shared/types/src/index.ts"],
-      "@shared/utils": ["shared/utils/src/index.ts"]
+      "@asymmetric-legal/types": ["shared/types/src/index.ts"],
+      "@asymmetric-legal/utils": ["shared/utils/src/index.ts"]
     }
   },
   "include": [

@@ -15,8 +15,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@asymmetric-legal/types": "0.1.0",
-    "@asymmetric-legal/utils": "0.1.0"
+    "@asymmetric-legal/types": "workspace:*",
+    "@asymmetric-legal/utils": "workspace:*"
   },
   "devDependencies": {
     "ts-node": "^10.9.2"
