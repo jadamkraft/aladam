@@ -1,0 +1,22 @@
+{
+  "name": "agent-orchestrator",
+  "version": "0.0.1",
+  "description": "Core orchestrator for the Indexer-Extractor-Auditor-Verifier loop.",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "scripts": {
+    "build": "echo \"TODO: add build step (e.g., tsup/tsc)\"",
+    "test": "echo \"No tests yet\""
+  },
+  "keywords": [
+    "agent",
+    "orchestrator",
+    "indexer",
+    "extractor",
+    "auditor",
+    "verifier"
+  ],
+  "author": "",
+  "license": "UNLICENSED"
+}
