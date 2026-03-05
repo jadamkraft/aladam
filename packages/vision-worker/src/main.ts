@@ -1,10 +1,16 @@
-import {
-  createConsoleLogger,
-  generateTraceId,
-  generateSpanId,
-  withExponentialBackoff
-} from "@asymmetric-legal/utils";
+import fs from "node:fs/promises";
+
+import { AzureKeyCredential, DocumentAnalysisClient } from "@azure/ai-form-recognizer";
+import { createConsoleLogger } from "@asymmetric-legal/utils";
 import type { AsyncBackoffSettings } from "@asymmetric-legal/types";
+
+import { DiscoveryInboxWatcher } from "./DiscoveryInboxWatcher.js";
+import { FileSystemStore } from "./FileSystemStore.js";
+import { VisionIngestionService } from "./VisionIngestionService.js";
+import { loadDiscoveryConfig } from "./discoveryConfig.js";
+import { AzureVisionProvider } from "./providers/AzureVisionProvider.js";
+import type { DocumentAnalysisClientLike } from "./providers/AzureVisionProvider.js";
+import type { VisionProvider } from "./providers/types.js";
 
 const logger = createConsoleLogger(process.env.LOG_LEVEL === "debug" ? "debug" : "info");
 
@@ -15,35 +21,69 @@ const backoffSettings: AsyncBackoffSettings = {
   maxRetries: 5
 };
 
-async function pollAndProcess(): Promise<void> {
-  const traceId = generateTraceId();
-  const spanId = generateSpanId();
+function createAzureVisionProvider(): VisionProvider {
+  const endpoint = process.env.AZURE_FORM_RECOGNIZER_ENDPOINT;
+  const apiKey = process.env.AZURE_FORM_RECOGNIZER_API_KEY;
+  const modelId = process.env.AZURE_FORM_RECOGNIZER_MODEL_ID ?? "prebuilt-document";
 
-  const scopedLogger = logger.withContext({
-    traceId,
-    spanId
-  });
+  if (endpoint === undefined || apiKey === undefined) {
+    throw new Error(
+      "Azure Form Recognizer configuration is missing. Ensure AZURE_FORM_RECOGNIZER_ENDPOINT and AZURE_FORM_RECOGNIZER_API_KEY are set."
+    );
+  }
 
-  await withExponentialBackoff(
-    async () => {
-      scopedLogger.debug("Vision worker poll tick");
-      // Placeholder: fetch work item, call Azure Vision, persist to Supabase with audit metadata.
-      return undefined;
-    },
+  const client = new DocumentAnalysisClient(endpoint, new AzureKeyCredential(apiKey));
+
+  const clientLike: DocumentAnalysisClientLike = {
+    async beginAnalyzeDocument(modelIdParam: string, document: Buffer) {
+      return client.beginAnalyzeDocument(modelIdParam, document);
+    }
+  };
+
+  return new AzureVisionProvider({
+    client: clientLike,
+    modelId,
     backoffSettings,
-    scopedLogger
-  );
+    logger
+  });
 }
 
 async function main(): Promise<void> {
   logger.info("Starting vision worker");
 
-  // Placeholder infinite loop with resilience; in production this would be event or queue-driven.
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    // eslint-disable-next-line no-await-in-loop
-    await pollAndProcess();
-  }
+  const discoveryConfig = loadDiscoveryConfig();
+
+  logger.info("Resolved discovery directories", {
+    inboxDir: discoveryConfig.inboxDir,
+    processedDir: discoveryConfig.processedDir,
+    errorDir: discoveryConfig.errorDir
+  });
+
+  await Promise.all([
+    fs.mkdir(discoveryConfig.inboxDir, { recursive: true }),
+    fs.mkdir(discoveryConfig.processedDir, { recursive: true }),
+    fs.mkdir(discoveryConfig.errorDir, { recursive: true })
+  ]);
+
+  const visionProvider = createAzureVisionProvider();
+
+  const fileSystemStore = new FileSystemStore(discoveryConfig.processedDir, logger);
+
+  const ingestionService = new VisionIngestionService({
+    visionProvider,
+    fileSystemStore,
+    backoffSettings,
+    logger
+  });
+
+  const watcher = new DiscoveryInboxWatcher({
+    inboxDir: discoveryConfig.inboxDir,
+    errorDir: discoveryConfig.errorDir,
+    ingestionService,
+    logger
+  });
+
+  watcher.start();
 }
 
 void main();
