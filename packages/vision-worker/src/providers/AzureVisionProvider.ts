@@ -75,7 +75,7 @@ export class AzureVisionProvider implements VisionProvider {
       scopedLogger
     );
 
-    const fragments = AzureVisionProvider.extractFragments(result);
+    const fragments = AzureVisionProvider.extractFragments(result, scopedLogger);
 
     const fullText = result.content ?? fragments.map((fragment) => fragment.text).join(" ");
 
@@ -90,7 +90,10 @@ export class AzureVisionProvider implements VisionProvider {
     };
   }
 
-  private static extractFragments(result: AnalyzeResult): readonly VisionTextFragment[] {
+  private static extractFragments(
+    result: AnalyzeResult,
+    logger: StructuredLogger
+  ): readonly VisionTextFragment[] {
     const fragments: VisionTextFragment[] = [];
 
     const pages = result.pages ?? [];
@@ -104,15 +107,28 @@ export class AzureVisionProvider implements VisionProvider {
         const polygon = word.polygon;
 
         if (polygon === undefined || polygon.length < 8) {
+          logger.warn("AzureVisionProvider: skipping word with missing or incomplete polygon", {
+            pageNumber,
+            content: word.content ?? "",
+            polygonLength: polygon?.length ?? 0
+          });
           continue;
         }
 
-        const boundingBox = AzureVisionProvider.polygonToBoundingBox(polygon, pageNumber);
+        const boundingBox = AzureVisionProvider.polygonToBoundingBox(polygon, pageNumber, logger);
+
+        if (boundingBox === undefined) {
+          logger.warn("AzureVisionProvider: skipping word with uncomputable bounding box", {
+            pageNumber,
+            content: word.content ?? ""
+          });
+          continue;
+        }
 
         const confidence = word.confidence ?? 1;
 
         fragments.push({
-          text: word.content,
+          text: word.content ?? "",
           boundingBox,
           pageNumber,
           confidence
@@ -123,15 +139,26 @@ export class AzureVisionProvider implements VisionProvider {
     return fragments;
   }
 
-  private static polygonToBoundingBox(polygon: readonly number[], pageNumber: number): BoundingBox {
+  private static polygonToBoundingBox(
+    polygon: readonly { x?: number; y?: number }[],
+    pageNumber: number,
+    logger: StructuredLogger
+  ): BoundingBox | undefined {
     let minX = Number.POSITIVE_INFINITY;
     let minY = Number.POSITIVE_INFINITY;
     let maxX = Number.NEGATIVE_INFINITY;
     let maxY = Number.NEGATIVE_INFINITY;
 
-    for (let index = 0; index + 1 < polygon.length; index += 2) {
-      const x = polygon[index];
-      const y = polygon[index + 1];
+    polygon.forEach((point, index) => {
+      const { x, y } = point;
+
+      if (x === undefined || y === undefined) {
+        logger.warn("AzureVisionProvider: polygon point missing coordinates, skipping", {
+          index,
+          pageNumber
+        });
+        return;
+      }
 
       if (x < minX) {
         minX = x;
@@ -148,6 +175,15 @@ export class AzureVisionProvider implements VisionProvider {
       if (y > maxY) {
         maxY = y;
       }
+    });
+
+    if (
+      !Number.isFinite(minX) ||
+      !Number.isFinite(minY) ||
+      !Number.isFinite(maxX) ||
+      !Number.isFinite(maxY)
+    ) {
+      return undefined;
     }
 
     return {
