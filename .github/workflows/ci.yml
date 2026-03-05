@@ -26,7 +26,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Forensic Audit: workspace types resolution
+      - name: "Forensic Audit: workspace types resolution"
         continue-on-error: true
         run: |
           echo "=== ls -R shared/types/dist ==="
