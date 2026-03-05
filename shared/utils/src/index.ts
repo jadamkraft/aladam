@@ -1,7 +1,10 @@
+import { randomBytes } from "node:crypto";
 import type {
   AsyncBackoffSettings,
   BatesID,
-  CaseID
+  CaseID,
+  TraceID,
+  SpanID
 } from "@asymmetric-legal/types";
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
@@ -9,6 +12,8 @@ export type LogLevel = "debug" | "info" | "warn" | "error";
 export type LogContext = {
   readonly batesId?: BatesID;
   readonly caseId?: CaseID;
+  readonly traceId?: TraceID;
+  readonly spanId?: SpanID;
 } & Readonly<Record<string, unknown>>;
 
 export interface LogRecord extends LogContext {
@@ -78,6 +83,28 @@ export function createConsoleLogger(level: LogLevel = "info"): StructuredLogger 
     // eslint-disable-next-line no-console
     console.log(JSON.stringify(record));
   }, level);
+}
+
+const generateHexId = (bytes: number): string => randomBytes(bytes).toString("hex");
+
+export const generateTraceId = (): TraceID => generateHexId(16) as TraceID;
+
+export const generateSpanId = (): SpanID => generateHexId(8) as SpanID;
+
+export function createFdeLogger(
+  level: LogLevel = "info",
+  baseContext?: { readonly traceId?: TraceID; readonly spanId?: SpanID } & Partial<
+    Pick<LogContext, "batesId" | "caseId">
+  >
+): StructuredLogger {
+  return createStructuredLogger(
+    (record: LogRecord) => {
+      // eslint-disable-next-line no-console
+      console.log(JSON.stringify(record));
+    },
+    level,
+    baseContext
+  );
 }
 
 interface BackoffCoreOptions {

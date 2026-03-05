@@ -1,4 +1,9 @@
-import { createConsoleLogger, withExponentialBackoff } from "@asymmetric-legal/utils";
+import {
+  createConsoleLogger,
+  generateTraceId,
+  generateSpanId,
+  withExponentialBackoff
+} from "@asymmetric-legal/utils";
 import type { AsyncBackoffSettings } from "@asymmetric-legal/types";
 
 const logger = createConsoleLogger(process.env.LOG_LEVEL === "debug" ? "debug" : "info");
@@ -11,14 +16,22 @@ const backoffSettings: AsyncBackoffSettings = {
 };
 
 async function pollAndProcess(): Promise<void> {
+  const traceId = generateTraceId();
+  const spanId = generateSpanId();
+
+  const scopedLogger = logger.withContext({
+    traceId,
+    spanId
+  });
+
   await withExponentialBackoff(
     async () => {
-      logger.debug("Vision worker poll tick");
+      scopedLogger.debug("Vision worker poll tick");
       // Placeholder: fetch work item, call Azure Vision, persist to Supabase with audit metadata.
       return undefined;
     },
     backoffSettings,
-    logger
+    scopedLogger
   );
 }
 

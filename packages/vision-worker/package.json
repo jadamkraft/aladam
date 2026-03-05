@@ -16,7 +16,8 @@
   },
   "dependencies": {
     "@asymmetric-legal/types": "workspace:*",
-    "@asymmetric-legal/utils": "workspace:*"
+    "@asymmetric-legal/utils": "workspace:*",
+    "@azure/ai-form-recognizer": "^5.1.0"
   },
   "devDependencies": {
     "ts-node": "^10.9.2"

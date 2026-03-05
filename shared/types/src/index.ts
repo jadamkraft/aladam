@@ -5,6 +5,9 @@ export type CaseID = string & { readonly __brand: "CaseID" };
 export type AgentID = string & { readonly __brand: "AgentID" };
 export type CarePlanVarianceID = string & { readonly __brand: "CarePlanVarianceID" };
 
+export type TraceID = string & { readonly __brand: "TraceID" };
+export type SpanID = string & { readonly __brand: "SpanID" };
+
 export type BatesNumber = string & { readonly __brand: "BatesNumber" };
 
 export interface BoundingBox {
@@ -13,6 +16,21 @@ export interface BoundingBox {
   readonly w: number;
   readonly h: number;
   readonly pageNumber: number;
+}
+
+export interface VisionTextFragment {
+  readonly text: string;
+  readonly boundingBox: BoundingBox;
+  readonly pageNumber: number;
+  readonly confidence: number;
+}
+
+export type ConfidenceScore = number & { readonly __brand: "ConfidenceScore" };
+
+export interface VisionOutput {
+  readonly batesId: BatesID;
+  readonly fullText: string;
+  readonly fragments: readonly VisionTextFragment[];
 }
 
 export interface BatesRegion {
