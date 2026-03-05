@@ -26,6 +26,18 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Forensic Audit: workspace types resolution
+        continue-on-error: true
+        run: |
+          echo "=== ls -R shared/types/dist ==="
+          ls -R shared/types/dist || echo "ls -R shared/types/dist failed"
+
+          echo "=== cat shared/types/package.json ==="
+          cat shared/types/package.json || echo "cat shared/types/package.json failed"
+
+          echo "=== pnpm list --filter @asymmetric-legal/vision-worker --depth 1 ==="
+          pnpm list --filter @asymmetric-legal/vision-worker --depth 1 || echo "pnpm list failed"
+
       - name: Build workspaces
         run: pnpm build
 
