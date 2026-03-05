@@ -30,7 +30,7 @@ export class FileSystemStore {
 
     await fs.mkdir(this.processedDir, { recursive: true });
 
-    const contents = JSON.stringify(record);
+    const contents = JSON.stringify(record, undefined, 2);
 
     await fs.writeFile(outputPath, contents, "utf8");
 
