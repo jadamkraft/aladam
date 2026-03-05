@@ -11,12 +11,18 @@ dist
 *.env
 *.env.local
 
-# pnpm
-pnpm-lock.yaml
-
 # Helm / K8s secrets
 infra/helm/**/secrets*.yaml
 infra/helm/**/values-secrets*.yaml
 
 # Test coverage
 coverage
+
+# Local data and exports (must not contain real PHI)
+data/
+samples/
+exports/
+
+# Cursor and editor artifacts
+.cursor/
+.DS_Store
